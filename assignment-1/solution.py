@@ -11,8 +11,8 @@ import numpy as np
 
 # Group Members:
 #
-# Student 1:
-# Student 2:
+# Student 1: Jeroen van Riel
+# Student 2: Koen Moors
 # ...
 
 ######################################
