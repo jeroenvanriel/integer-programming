@@ -50,43 +50,61 @@ def read_instance(filename):
 # EXERCISE 1
 ######################################
 
-def exercise1(
-        K, X, Y, eps
-        ):
-
+def exercise1(K, X, Y, eps):
+    # this should be large w.r.t. to the input instance
     M = 10
-    n = len(X[0])
-    RX = len(X)
-    RY = len(Y)
-    m = gp.Model()
+
+    # dimension of the points
+    N = len(X[0])
 
     plot_data(X, Y)
+
+    m = gp.Model()
+
+    # We use i to index constraints (lines), j to index points from Y
+    # and 0 <= n < N to index coordinates.
     
+    # constraint active / inactive decision variables
     u = [m.addVar(obj=1, vtype=gp.GRB.BINARY, name=f"u_{i}") for i in range(K)]
-    a = { (i, k): m.addVar(-float('inf'), float('inf'), obj=0, vtype=gp.GRB.CONTINUOUS, name="a_{}_{}".format(i,k))
-            for k in range(n)
+    # constraint orientations
+    a = { (i, n):
+            m.addVar(-float('inf'), float('inf'), obj=0, vtype=gp.GRB.CONTINUOUS, name=f"a_{i}_{n}")
+            for n in range(N)
             for i in range(K) }
+    # constraint offsets
     b = [m.addVar(obj=0, vtype=gp.GRB.CONTINUOUS, name=f"b_{i}") for i in range(K)]
-    s = { (i, j): m.addVar(obj=0, vtype=gp.GRB.BINARY, name="s_{}_{}".format(i,j)) for i in range(K) for j in range(RY) }
+    # constraint violation decision variables
+    s = { (i, j):
+            m.addVar(obj=0, vtype=gp.GRB.BINARY, name=f"s_{i}_{j}")
+            for i in range(K)
+            for j in range(len(Y)) }
+
+    # constraint satisfaction for points in X
+    for j in range(len(X)):
+        for i in range(K):
+            m.addConstr(gp.quicksum(a[i,n] * X[j][n] for n in range(N)) <= b[i])
+
+    # constraint satisfaction for points in Y
+    # provided that s[i,j] = 0 (no violation)
+    for j in range(len(Y)):
+        for i in range(K):
+            m.addConstr(M * (s[i,j] + 1 - u[i]) + gp.quicksum(a[i,n] * Y[j][n] for n in range(N)) >= b[i] + eps)
+
+    # each point in Y satisfies at least one constraint
+    for j in range(len(Y)):
+        m.addConstr(gp.quicksum(s[i,j] for i in range(K)) <= gp.quicksum(u[i] for i in range(K)) - 1)
 
     ### Bound a_i's away from zero vector ###
     # N.B.: these are not necessary for correctness, but they seem to speed up the
     # optimization for all the provided instances. Especially for the 'data_cg_cross4.cg'
     # instance, it reduces computation time from 96.59s to 10.35s.
     # # sign variables for a_i
-    # p = { (i, k): m.addVar(obj=0, vtype=gp.GRB.BINARY, name=f"p_{i}_{k}") for i in range(K) for k in range(n) }
+    # p = { (i, n): m.addVar(obj=0, vtype=gp.GRB.BINARY, name=f"p_{i}_{n}") for i in range(K) for n in range(N) }
     # # sign constraints for a_i
     # for i in range(K):
-    #     for k in range(n):
-    #         m.addConstr(a[i,k] + p[i,k] * M >= 1)
-    #         m.addConstr(a[i,k] - (1 - p[i,k]) * M <= -1)
-
-    cx = [m.addConstr(gp.quicksum(a[i,k] * X[j][k] for k in range(n)) <= b[i]) for j in range(RX) for i in range(K)]
-    cy = [m.addConstr(M * (s[i,j] + 1 - u[i]) + gp.quicksum(a[i,k] * Y[j][k] for k in range(n)) >= b[i] + eps)
-                            for j in range(RY)
-                            for i in range(K)
-                            ]
-    cu = [m.addConstr(gp.quicksum(s[i,j] for i in range(K)) <= gp.quicksum(u[i] for i in range(K)) - 1) for j in range(RY)]
+    #     for n in range(N):
+    #         m.addConstr(a[i,n] + p[i,n] * M >= 1)
+    #         m.addConstr(a[i,n] - (1 - p[i,n]) * M <= -1)
 
     m.ModelSense = gp.GRB.MINIMIZE
     m.update()
