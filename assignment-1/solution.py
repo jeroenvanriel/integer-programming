@@ -142,10 +142,72 @@ def plot_data(X, Y):
 # EXERCISE 3
 ######################################
 
-def exercise3(
-        # provide input here
-        ):
-    pass
+def exercise3(X, Y, eps):
+
+    # dimension of the points
+    N = len(X[0])
+
+    # construct primal problem with feasible basis
+    # we could start by including every I_y := \{ y \}, for all y \in Y
+    primal = gp.Model()
+    primal.ModelSense = gp.GRB.MINIMIZE
+
+    # list of \mathcal{I}_y sets
+    vars = { str(y) : [] for y in Y }
+    for y in Y:
+        vars[str(y)].append(primal.addVar(obj=1))
+
+    # initial constraints
+    cons = { j : primal.addConstr(gp.quicksum(vars[str(y)]) >= 1) for j in range(len(Y)) }
+
+    # construct the pricing problem
+    # N.B.: We need to require u >= 0, because of 
+    # the >= inequality in the primal problem.
+    pricing = gp.Model()
+    pricing.ModelSense = gp.GRB.MAXIMIZE
+
+    # for every y, we have a variable indicating whether it is in the set
+    s = { j : pricing.addVar(obj=0, vtype=gp.GRB.BINARY, name=f"s_{y}") for j in range(len(Y)) }
+
+    # the feasible region encodes all the linear separable sets
+    # so we need orientation and offset
+    a = { n: pricing.addVar(float("-inf"), float("inf"), 
+                            obj=0, name=f"a_{n}") for n in range(N) }
+    b = pricing.addVar(obj=0, name="b")
+
+    M = 10000 # "large" number
+    for x in X:
+        pricing.addConstr(gp.quicksum([a[n] * x[n] for n in range(N)]) <= b)
+    for j in range(len(Y)):
+        pricing.addConstr(M * s[j] + gp.quicksum([a[n] * Y[j][n] for n in range(N)]) >= b + eps)
+
+    while True:
+        primal.update()
+        primal.optimize()
+
+        # obtain the dual solution
+        # use constr.pi to get shadow price
+        u = { j : cons[j].pi for j in range(len(Y))}
+        print(f"dual solution: {u}")
+
+        # update the pricing problems objective
+        # to this dual solution
+        for j in range(len(Y)):
+            s[j].Obj = u[j]
+
+        # solve the pricing problem
+        pricing.update()
+        pricing.optimize()
+
+        if pricing.ObjVal > 1:
+            print("optimal solution found!")
+            break
+
+        # add new variable
+        # s specifies which y \in Y are in the found I
+        col = [float(s[j].X) for j in range(len(Y))]
+        print(f"adding column: {col}")
+        primal.addVar(obj=1.0, column=gp.Column(col, cons))
 
 
 ##############################
@@ -183,9 +245,9 @@ def main():
 
     # add your input to the following functions
 
-    exercise1(K, X, Y, eps)
+    # exercise1(K, X, Y, eps)
 
-    exercise3()
+    exercise3(X, Y, eps)
 
     exercise4()
 
