@@ -69,13 +69,17 @@ def exercise1(
     b = [m.addVar(obj=0, vtype=gp.GRB.CONTINUOUS, name=f"b_{i}") for i in range(K)]
     s = { (i, j): m.addVar(obj=0, vtype=gp.GRB.BINARY, name="s_{}_{}".format(i,j)) for i in range(K) for j in range(RY) }
 
-    # sign variables for a_i
-    p = { (i, k): m.addVar(obj=0, vtype=gp.GRB.BINARY, name=f"p_{i}_{k}") for i in range(K) for k in range(n) }
-    # sign constraints for a_i
-    for i in range(K):
-        for k in range(n):
-            m.addConstr(a[i,k] + p[i,k] * M >= 1)
-            m.addConstr(a[i,k] - (1 - p[i,k]) * M <= -1)
+    ### Bound a_i's away from zero vector ###
+    # N.B.: these are not necessary for correctness, but they seem to speed up the
+    # optimization for all the provided instances. Especially for the 'data_cg_cross4.cg'
+    # instance, it reduces computation time from 96.59s to 10.35s.
+    # # sign variables for a_i
+    # p = { (i, k): m.addVar(obj=0, vtype=gp.GRB.BINARY, name=f"p_{i}_{k}") for i in range(K) for k in range(n) }
+    # # sign constraints for a_i
+    # for i in range(K):
+    #     for k in range(n):
+    #         m.addConstr(a[i,k] + p[i,k] * M >= 1)
+    #         m.addConstr(a[i,k] - (1 - p[i,k]) * M <= -1)
 
     cx = [m.addConstr(gp.quicksum(a[i,k] * X[j][k] for k in range(n)) <= b[i]) for j in range(RX) for i in range(K)]
     cy = [m.addConstr(M * (s[i,j] + 1 - u[i]) + gp.quicksum(a[i,k] * Y[j][k] for k in range(n)) >= b[i] + eps)
