@@ -146,7 +146,6 @@ def main():
     else:
         path = pathlib.Path("data_cg_cube.cg")
         print(f"WARNING: Instance not specified. Defaulting to {path}.")
-    path = pathlib.Path(r"./data_cg_cross4.cg")
     assert path.exists(), f"Path {path} does not exist. ({path.resolve()})"
     
     print(f"Reading instance {path}")
