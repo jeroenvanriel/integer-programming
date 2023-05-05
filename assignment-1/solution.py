@@ -88,23 +88,25 @@ def exercise1(
     m.update()
     m.optimize()
 
-    # print(u)
-    # print(s)
-    # print(a)
-    # print(b)
-
-    # sample points from lines
+    # Sample points from lines for the first two variables,
+    # such that we can completely inspect problems with n=2.
+    # Note that this may be also be used for n>2 problems,
+    # by visualizing "cross sections" of the space.
     step = 0.5
-    xs = np.arange(-1, 2, step)
+    xs = np.arange(-10, 10, step)
     for i in range(K):
-        if i == 6 or u[i].X < 0.5:
+        if u[i].X < 0.5:
+            # skip inactive (u_i == 0) lines
             continue
         if abs(a[i, 1].X) < eps / 2:
             # horizontal line
             ys = [0 for x in xs]
         else:
+            # plot the first two coordinates
             ys = [(b[i].X - a[i,0].X * x) / a[i,1].X for x in xs]
         plt.plot(xs, ys, linestyle=('dotted' if u[i].X < 0.5 else 'solid'))
+        plt.xlim([-10, 10])
+        plt.ylim([-10, 10])
     plt.show()
 
 
