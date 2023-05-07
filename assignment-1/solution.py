@@ -216,7 +216,7 @@ def exercise3(X, Y, eps):
             print("optimal solution found!")
             break
 
-        # column s is adjacency vector of y \in Y in pattern I
+        # column s is incidence vector of y \in Y in pattern I
         col = [int(s[j].X) for j in range(len(Y))]
         cols.append(col)
         # add new variable to the primal problem
