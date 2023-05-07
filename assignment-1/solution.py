@@ -46,6 +46,13 @@ def read_instance(filename):
 
     return K, X, Y
 
+def keyboard_terminate(model, where):
+    """Terminate m.optimize() using `ctrl + c`."""
+    try:
+        pass
+    except KeyboardInterrupt:
+        model.terminate()
+
 ######################################
 # EXERCISE 1
 ######################################
@@ -143,31 +150,31 @@ def plot_data(X, Y):
 ######################################
 
 def exercise3(X, Y, eps):
-
     # dimension of the points
     N = len(X[0])
+
+    # tolerance for pricing problem
+    tolerance = 0.0001
 
     # construct primal problem with feasible basis
     # we could start by including every I_y := \{ y \}, for all y \in Y
     primal = gp.Model()
     primal.ModelSense = gp.GRB.MINIMIZE
 
-    # list of \mathcal{I}_y sets
-    vars = { str(y) : [] for y in Y }
-    for y in Y:
-        vars[str(y)].append(primal.addVar(obj=1))
-
-    # initial constraints
-    cons = { j : primal.addConstr(gp.quicksum(vars[str(y)]) >= 1) for j in range(len(Y)) }
+    # initial variables and constraints
+    # TODO: try better initial patterns (e.g. separable sets with more
+    # than one element, found using some heuristic)
+    cols = np.eye(len(Y), dtype=np.int16).tolist()
+    vars = primal.addVars(len(Y), obj=1, vtype='C', name='vars')
+    cons = primal.addConstrs((vars[j] >= 1 for j in range(len(Y))), name='c1')
 
     # construct the pricing problem
-    # N.B.: We need to require u >= 0, because of 
-    # the >= inequality in the primal problem.
     pricing = gp.Model()
     pricing.ModelSense = gp.GRB.MAXIMIZE
+    pricing.Params.BestObjStop = 1 + tolerance
 
     # for every y, we have a variable indicating whether it is in the set
-    s = { j : pricing.addVar(obj=0, vtype=gp.GRB.BINARY, name=f"s_{y}") for j in range(len(Y)) }
+    s = { j : pricing.addVar(obj=0, vtype=gp.GRB.BINARY, name=f"s_{Y[j]}") for j in range(len(Y)) }
 
     # the feasible region encodes all the linear separable sets
     # so we need orientation and offset
@@ -175,48 +182,44 @@ def exercise3(X, Y, eps):
                             obj=0, name=f"a_{n}") for n in range(N) }
     b = pricing.addVar(obj=0, name="b")
 
-    M = 10000 # "large" number
+    M = 10 # "large" number
     for x in X:
         pricing.addConstr(gp.quicksum([a[n] * x[n] for n in range(N)]) <= b)
     for j in range(len(Y)):
-        pricing.addConstr(M * s[j] + gp.quicksum([a[n] * Y[j][n] for n in range(N)]) >= b + eps)
+        pricing.addConstr(M * (1 - s[j]) + gp.quicksum([a[n] * Y[j][n] for n in range(N)]) >= b + eps)
 
     while True:
         primal.update()
-        primal.optimize()
+        primal.optimize(keyboard_terminate)
 
-        # obtain the dual solution
-        # use constr.pi to get shadow price
-        u = { j : cons[j].pi for j in range(len(Y))}
-        print(f"dual solution: {u}")
-
-        # update the pricing problems objective
-        # to this dual solution
+        # obtain the dual solution to update the pricing
+        # problems objective (constr.pi is shadow price)
         for j in range(len(Y)):
-            s[j].Obj = u[j]
+            s[j].Obj = cons[j].pi
 
         # solve the pricing problem
         pricing.update()
-        pricing.optimize()
+        pricing.optimize(keyboard_terminate)
 
-        if pricing.ObjVal > 1:
+        # reduced costs non-negative? => optimal
+        if pricing.ObjVal <= 1 + tolerance:
             print("optimal solution found!")
             break
 
-        # add new variable
-        # s specifies which y \in Y are in the found I
-        col = [float(s[j].X) for j in range(len(Y))]
-        print(f"adding column: {col}")
-        primal.addVar(obj=1.0, column=gp.Column(col, cons))
+        # column s is adjacency vector of y \in Y in pattern I
+        col = [int(s[j].X) for j in range(len(Y))]
+        cols.append(col)
+        # add new variable to the primal problem
+        primal.addVar(obj=1, vtype='C', column=gp.Column(col, cons.values()))
 
+    print(f"total number of columns: {len(cols)}")
+    return cols
 
 ##############################
 # EXERCISE 4
 ##############################
 
-def exercise4(
-        # provide input here
-        ):
+def exercise4(cols):
     pass
 
 
@@ -247,9 +250,9 @@ def main():
 
     # exercise1(K, X, Y, eps)
 
-    exercise3(X, Y, eps)
+    cols = exercise3(X, Y, eps)
 
-    exercise4()
+    exercise4(cols)
 
     ###############################################
     # end of modifiable block
