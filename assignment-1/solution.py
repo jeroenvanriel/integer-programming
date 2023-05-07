@@ -183,6 +183,16 @@ def exercise3(X, Y, eps):
     b = pricing.addVar(obj=0, name="b")
 
     M = 10 # "large" number
+
+    # bound a away from zero
+    # sign variables for a_i
+    p = { n: pricing.addVar(obj=0, vtype=gp.GRB.BINARY, name=f"p_{n}") for n in range(N) }
+    # sign constraints for a_i
+    for n in range(N):
+        pricing.addConstr(a[n] + p[n] * M >= 1)
+        pricing.addConstr(a[n] - (1 - p[n]) * M <= -1)
+
+    # separation constraints
     for x in X:
         pricing.addConstr(gp.quicksum([a[n] * x[n] for n in range(N)]) <= b)
     for j in range(len(Y)):
@@ -252,7 +262,7 @@ def main():
 
     cols = exercise3(X, Y, eps)
 
-    exercise4(cols)
+    # exercise4(cols)
 
     ###############################################
     # end of modifiable block
