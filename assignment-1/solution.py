@@ -237,6 +237,7 @@ def exercise3(X, Y, eps):
 
     # initial variables and constraints
     cols, cons = partition_cols(primal, pricing, Y)
+    # cols, cons = singleton_cols(primal, Y)
 
     pricing.Params.BestObjStop = 1 + tolerance
 
