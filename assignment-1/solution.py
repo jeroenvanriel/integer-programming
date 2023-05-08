@@ -259,11 +259,18 @@ def exercise3(X, Y, eps):
             print("optimal solution found!")
             break
 
-        # column s is incidence vector of y \in Y in pattern I
-        col = [int(s[j].X) for j in range(len(Y))]
-        cols.append(col)
-        # add new variable to the primal problem
-        primal.addVar(obj=1, vtype='C', column=gp.Column(col, cons.values()))
+        added = 0
+        for k in range(pricing.SolCount):
+            pricing.Params.SolutionNumber = k
+            if pricing.PoolObjVal >= 1:
+                added += 1
+                # column s is incidence vector of y \in Y in pattern I
+                col = [int(s[j].Xn) for j in range(len(Y))]
+                cols.append(col)
+                # add new variable to the primal problem
+                primal.addVar(obj=1, vtype='C', column=gp.Column(col, cons.values()))
+        
+        print(f"-------------- ADDED {added} COLUMNS")
 
     print(f"total number of columns: {len(cols)}")
     return cols
