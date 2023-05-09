@@ -149,6 +149,49 @@ def plot_data(X, Y):
 # EXERCISE 3
 ######################################
 
+def singleton_cols(primal, Y):
+    cols = np.eye(len(Y), dtype=np.int16).tolist()
+    vars = primal.addVars(len(Y), obj=1, vtype='C', name='vars')
+    cons = primal.addConstrs((vars[j] >= 1 for j in range(len(Y))), name='c1')
+
+    return cols, cons
+
+def partition_cols(primal, pricing, Y):
+    m = pricing.copy()
+
+    for j in range(len(Y)):
+        s = m.getVarByName(f"s_{Y[j]}")
+        s.Obj = 1
+    
+    cols = []
+    removed = 0
+    # while there are constraints for Y
+    while removed < len(Y):
+        m.update()
+        m.optimize()
+
+        col = [0 for j in range(len(Y))]
+        for j in range(len(Y)):
+            v = m.getVarByName(f"s_{Y[j]}")
+            if v is not None:
+                col[j] = v.X
+
+        cols.append(col)
+        # remove the y's from the problem
+        for j in range(len(Y)):
+            if col[j]:
+                c = m.getConstrByName(str(j))
+                m.remove(c)
+                s = m.getVarByName(f"s_{Y[j]}")
+                m.remove(s)
+                removed += 1
+
+    vars = primal.addVars(len(cols), obj=1, vtype='C', name='vars')
+    cons = primal.addConstrs((gp.quicksum([vars[i] * cols[i][j] for i in range(len(cols))]) >= 1
+                       for j in range(len(Y))), name='c1')
+
+    return cols, cons
+
 def exercise3(X, Y, eps):
     # dimension of the points
     N = len(X[0])
@@ -161,17 +204,9 @@ def exercise3(X, Y, eps):
     primal = gp.Model()
     primal.ModelSense = gp.GRB.MINIMIZE
 
-    # initial variables and constraints
-    # TODO: try better initial patterns (e.g. separable sets with more
-    # than one element, found using some heuristic)
-    cols = np.eye(len(Y), dtype=np.int16).tolist()
-    vars = primal.addVars(len(Y), obj=1, vtype='C', name='vars')
-    cons = primal.addConstrs((vars[j] >= 1 for j in range(len(Y))), name='c1')
-
     # construct the pricing problem
     pricing = gp.Model()
     pricing.ModelSense = gp.GRB.MAXIMIZE
-    pricing.Params.BestObjStop = 1 + tolerance
 
     # for every y, we have a variable indicating whether it is in the set
     s = { j : pricing.addVar(obj=0, vtype=gp.GRB.BINARY, name=f"s_{Y[j]}") for j in range(len(Y)) }
@@ -196,7 +231,15 @@ def exercise3(X, Y, eps):
     for x in X:
         pricing.addConstr(gp.quicksum([a[n] * x[n] for n in range(N)]) <= b)
     for j in range(len(Y)):
-        pricing.addConstr(M * (1 - s[j]) + gp.quicksum([a[n] * Y[j][n] for n in range(N)]) >= b + eps)
+        pricing.addConstr(M * (1 - s[j]) + gp.quicksum([a[n] * Y[j][n] for n in range(N)]) >= b + eps, name=str(j))
+
+    pricing.update()
+
+    # initial variables and constraints
+    cols, cons = partition_cols(primal, pricing, Y)
+    # cols, cons = singleton_cols(primal, Y)
+
+    pricing.Params.BestObjStop = 1 + tolerance
 
     while True:
         primal.update()
@@ -216,11 +259,18 @@ def exercise3(X, Y, eps):
             print("optimal solution found!")
             break
 
-        # column s is incidence vector of y \in Y in pattern I
-        col = [int(s[j].X) for j in range(len(Y))]
-        cols.append(col)
-        # add new variable to the primal problem
-        primal.addVar(obj=1, vtype='C', column=gp.Column(col, cons.values()))
+        added = 0
+        for k in range(pricing.SolCount):
+            pricing.Params.SolutionNumber = k
+            if pricing.PoolObjVal >= 1:
+                added += 1
+                # column s is incidence vector of y \in Y in pattern I
+                col = [int(s[j].Xn) for j in range(len(Y))]
+                cols.append(col)
+                # add new variable to the primal problem
+                primal.addVar(obj=1, vtype='C', column=gp.Column(col, cons.values()))
+        
+        print(f"-------------- ADDED {added} COLUMNS")
 
     print(f"total number of columns: {len(cols)}")
     return cols
