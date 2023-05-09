@@ -186,11 +186,11 @@ def exercise3(X, Y, eps):
 
     # bound a away from zero
     # sign variables for a_i
-    p = { n: pricing.addVar(obj=0, vtype=gp.GRB.BINARY, name=f"p_{n}") for n in range(N) }
+    # p = { n: pricing.addVar(obj=0, vtype=gp.GRB.BINARY, name=f"p_{n}") for n in range(N) }
     # sign constraints for a_i
-    for n in range(N):
-        pricing.addConstr(a[n] + p[n] * M >= 1)
-        pricing.addConstr(a[n] - (1 - p[n]) * M <= -1)
+    # for n in range(N):
+    #     pricing.addConstr(a[n] + p[n] * M >= 1)
+    #     pricing.addConstr(a[n] - (1 - p[n]) * M <= -1)
 
     # separation constraints
     for x in X:
@@ -230,7 +230,17 @@ def exercise3(X, Y, eps):
 ##############################
 
 def exercise4(cols):
-    pass
+    R = len(cols[0])  # len(Y)
+    L = len(cols)
+
+    m = gp.Model()
+    m.ModelSense = gp.GRB.MINIMIZE
+
+    vars = m.addVars(L, obj=1, vtype=gp.GRB.BINARY, name='vars')
+    cons = m.addConstrs((gp.quicksum(cols[i][j]*vars[i] for i in range(L)) >= 1 for j in range(R)))
+
+    m.update()
+    m.optimize()
 
 
 ##############################
@@ -262,7 +272,7 @@ def main():
 
     cols = exercise3(X, Y, eps)
 
-    # exercise4(cols)
+    exercise4(cols)
 
     ###############################################
     # end of modifiable block
