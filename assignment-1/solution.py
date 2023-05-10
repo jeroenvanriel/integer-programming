@@ -202,10 +202,12 @@ def exercise3(X, Y, eps):
     # construct primal problem with feasible basis
     # we could start by including every I_y := \{ y \}, for all y \in Y
     primal = gp.Model()
+    primal.params.OutputFlag = 0
     primal.ModelSense = gp.GRB.MINIMIZE
 
     # construct the pricing problem
     pricing = gp.Model()
+    pricing.params.OutputFlag = 0
     pricing.ModelSense = gp.GRB.MAXIMIZE
 
     # for every y, we have a variable indicating whether it is in the set
@@ -270,7 +272,7 @@ def exercise3(X, Y, eps):
                 # add new variable to the primal problem
                 primal.addVar(obj=1, vtype='C', column=gp.Column(col, cons.values()))
         
-        print(f"-------------- ADDED {added} COLUMNS")
+        # print(f"-------------- ADDED {added} COLUMNS")
 
     print(f"total number of columns: {len(cols)}")
     return cols
@@ -322,7 +324,7 @@ def main():
 
     cols = exercise3(X, Y, eps)
 
-    exercise4(cols)
+    # exercise4(cols)
 
     ###############################################
     # end of modifiable block
