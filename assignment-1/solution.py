@@ -275,6 +275,7 @@ def exercise3(X, Y, eps):
         # print(f"-------------- ADDED {added} COLUMNS")
 
     print(f"total number of columns: {len(cols)}")
+    print(f"objective value: {primal.ObjVal}")
     return cols
 
 ##############################
