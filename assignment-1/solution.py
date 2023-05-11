@@ -5,6 +5,8 @@ import pathlib
 import matplotlib.pyplot as plt
 import numpy as np
 
+import time
+
 ###############################################################################################
 ##### HEADER ####
 ###############################################################################################
@@ -64,7 +66,7 @@ def exercise1(K, X, Y, eps):
     # dimension of the points
     N = len(X[0])
 
-    plot_data(X, Y)
+    # plot_data(X, Y)
 
     m = gp.Model()
 
@@ -117,7 +119,7 @@ def exercise1(K, X, Y, eps):
     m.update()
     m.optimize()
 
-    plot_lines(u, a, b)
+    # plot_lines(u, a, b)
 
 
 def plot_lines(u, a, b):
@@ -294,7 +296,7 @@ def exercise4(cols):
 
     m.update()
     m.optimize()
-
+    print(f"objective value: {m.ObjVal}")
 
 ##############################
 # MAIN FUNCTION
@@ -320,13 +322,16 @@ def main():
     ###############################################
 
     # add your input to the following functions
-
-    # exercise1(K, X, Y, eps)
-
+    t = time.time()
+    exercise1(K, X, Y, eps)
+    print(f"Time it took to complete exercise 1: {time.time()-t} s")
+    t = time.time()
     cols = exercise3(X, Y, eps)
-
-    # exercise4(cols)
-
+    print(f"Time it took to complete exercise 3: {time.time()-t} s")
+    t = time.time()
+    exercise4(cols)
+    print(f"Time it took to complete exercise 4: {time.time()-t} s")
+    
     ###############################################
     # end of modifiable block
     ###############################################
