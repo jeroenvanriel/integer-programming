@@ -15,7 +15,6 @@ import time
 #
 # Student 1: Jeroen van Riel
 # Student 2: Koen Moors
-# ...
 
 ######################################
 # AUXILIARY FUNCTIONS
@@ -55,6 +54,30 @@ def keyboard_terminate(model, where):
     except KeyboardInterrupt:
         model.terminate()
 
+def plot_lines(u, a, b):
+    """Sample points from lines for the first two variables,
+    such that we can completely inspect problems with n=2.
+    Note that this may be also be used for n>2 problems,
+    by visualizing "cross sections" of the space."""
+    step = 0.5
+    xs = np.arange(-10, 10, step)
+    for i in range(len(u)):
+        if u[i].X < 0.5:
+            # skip inactive (u_i == 0) lines
+            continue
+        # plot the first two coordinates
+        ys = [(b[i].X - a[i,0].X * x) / a[i,1].X for x in xs]
+        plt.plot(xs, ys, linestyle=('dotted' if u[i].X < 0.5 else 'solid'))
+        plt.xlim([-10, 10])
+        plt.ylim([-10, 10])
+    plt.show()
+
+def plot_data(X, Y):
+    xs = np.array(X)
+    ys = np.array(Y)
+    plt.scatter(xs[:,0], xs[:,1], marker='x')
+    plt.scatter(ys[:,0], ys[:,1], marker='o')
+
 ######################################
 # EXERCISE 1
 ######################################
@@ -66,7 +89,7 @@ def exercise1(K, X, Y, eps):
     # dimension of the points
     N = len(X[0])
 
-    # plot_data(X, Y)
+    plot_data(X, Y)
 
     m = gp.Model()
 
@@ -119,39 +142,14 @@ def exercise1(K, X, Y, eps):
     m.update()
     m.optimize()
 
-    # plot_lines(u, a, b)
-
-
-def plot_lines(u, a, b):
-    """Sample points from lines for the first two variables,
-    such that we can completely inspect problems with n=2.
-    Note that this may be also be used for n>2 problems,
-    by visualizing "cross sections" of the space."""
-    step = 0.5
-    xs = np.arange(-10, 10, step)
-    for i in range(len(u)):
-        if u[i].X < 0.5:
-            # skip inactive (u_i == 0) lines
-            continue
-        # plot the first two coordinates
-        ys = [(b[i].X - a[i,0].X * x) / a[i,1].X for x in xs]
-        plt.plot(xs, ys, linestyle=('dotted' if u[i].X < 0.5 else 'solid'))
-        plt.xlim([-10, 10])
-        plt.ylim([-10, 10])
-    plt.show()
-
-
-def plot_data(X, Y):
-    xs = np.array(X)
-    ys = np.array(Y)
-    plt.scatter(xs[:,0], xs[:,1], marker='x')
-    plt.scatter(ys[:,0], ys[:,1], marker='o')
+    plot_lines(u, a, b)
 
 ######################################
 # EXERCISE 3
 ######################################
 
 def singleton_cols(primal, Y):
+    """Take all singletons {y} for all y in Y as columns."""
     cols = np.eye(len(Y), dtype=np.int16).tolist()
     vars = primal.addVars(len(Y), obj=1, vtype='C', name='vars')
     cons = primal.addConstrs((vars[j] >= 1 for j in range(len(Y))), name='c1')
@@ -159,6 +157,7 @@ def singleton_cols(primal, Y):
     return cols, cons
 
 def partition_cols(primal, pricing, Y):
+    """Greedily construct columns by solving the problem from exercise 2."""
     m = pricing.copy()
 
     for j in range(len(Y)):
@@ -263,11 +262,9 @@ def exercise3(X, Y, eps):
             print("optimal solution found!")
             break
 
-        added = 0
         for k in range(pricing.SolCount):
             pricing.Params.SolutionNumber = k
             if pricing.PoolObjVal >= 1:
-                added += 1
                 # column s is incidence vector of y \in Y in pattern I
                 col = [int(s[j].Xn) for j in range(len(Y))]
                 # now add all y that violate the boundary ax<=b
@@ -277,8 +274,6 @@ def exercise3(X, Y, eps):
                 cols.append(col)
                 # add new variable to the primal problem
                 primal.addVar(obj=1, vtype='C', column=gp.Column(col, cons.values()))
-        
-        # print(f"-------------- ADDED {added} COLUMNS")
 
     print(f"total number of columns: {len(cols)}")
     print(f"objective value: {primal.ObjVal}")
@@ -328,13 +323,13 @@ def main():
     # add your input to the following functions
     t = time.time()
     exercise1(K, X, Y, eps)
-    print(f"Time it took to complete exercise 1: {time.time()-t} s")
+    print(f"Time it took to complete exercise 1: {time.time()-t} s", end= '\n \n')
     t = time.time()
     cols = exercise3(X, Y, eps)
-    print(f"Time it took to complete exercise 3: {time.time()-t} s")
+    print(f"Time it took to complete exercise 3: {time.time()-t} s", end= '\n \n')
     t = time.time()
     exercise4(cols)
-    print(f"Time it took to complete exercise 4: {time.time()-t} s")
+    print(f"Time it took to complete exercise 4: {time.time()-t} s", end= '\n \n')
     
     ###############################################
     # end of modifiable block
