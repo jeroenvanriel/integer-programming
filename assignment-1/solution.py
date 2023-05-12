@@ -126,18 +126,6 @@ def exercise1(K, X, Y, eps):
     for j in range(len(Y)):
         m.addConstr(gp.quicksum(s[i,j] for i in range(K)) <= gp.quicksum(u[i] for i in range(K)) - 1)
 
-    ### Bound a_i's away from zero vector ###
-    # N.B.: these are not necessary for correctness, but they seem to speed up the
-    # optimization for all the provided instances. Especially for the 'data_cg_cross4.cg'
-    # instance, it reduces computation time from 96.59s to 10.35s.
-    # # sign variables for a_i
-    # p = { (i, n): m.addVar(obj=0, vtype=gp.GRB.BINARY, name=f"p_{i}_{n}") for i in range(K) for n in range(N) }
-    # # sign constraints for a_i
-    # for i in range(K):
-    #     for n in range(N):
-    #         m.addConstr(a[i,n] + p[i,n] * M >= 1)
-    #         m.addConstr(a[i,n] - (1 - p[i,n]) * M <= -1)
-
     m.ModelSense = gp.GRB.MINIMIZE
     m.update()
     m.optimize()
@@ -221,14 +209,6 @@ def exercise3(X, Y, eps):
     b = pricing.addVar(obj=0, name="b")
 
     M = 10 # "large" number
-
-    # bound a away from zero
-    # sign variables for a_i
-    # p = { n: pricing.addVar(obj=0, vtype=gp.GRB.BINARY, name=f"p_{n}") for n in range(N) }
-    # sign constraints for a_i
-    # for n in range(N):
-    #     pricing.addConstr(a[n] + p[n] * M >= 1)
-    #     pricing.addConstr(a[n] - (1 - p[n]) * M <= -1)
 
     # separation constraints
     for x in X:
