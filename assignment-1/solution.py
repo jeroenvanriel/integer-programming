@@ -204,12 +204,12 @@ def exercise3(X, Y, eps):
     # construct primal problem with feasible basis
     # we could start by including every I_y := \{ y \}, for all y \in Y
     primal = gp.Model()
-    primal.params.OutputFlag = 0
+    primal.params.OutputFlag = 0  # for readability, output is turned off
     primal.ModelSense = gp.GRB.MINIMIZE
 
     # construct the pricing problem
     pricing = gp.Model()
-    pricing.params.OutputFlag = 0
+    pricing.params.OutputFlag = 0 # for readability, output is turned off
     pricing.ModelSense = gp.GRB.MAXIMIZE
 
     # for every y, we have a variable indicating whether it is in the set
@@ -270,6 +270,10 @@ def exercise3(X, Y, eps):
                 added += 1
                 # column s is incidence vector of y \in Y in pattern I
                 col = [int(s[j].Xn) for j in range(len(Y))]
+                # now add all y that violate the boundary ax<=b
+                for j in range(len(Y)):
+                    if sum(a[n].Xn * Y[j][n] for n in range(N)) >= b.Xn +eps:
+                        col[j] = 1
                 cols.append(col)
                 # add new variable to the primal problem
                 primal.addVar(obj=1, vtype='C', column=gp.Column(col, cons.values()))
