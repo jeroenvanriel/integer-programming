@@ -5,6 +5,8 @@ import pathlib
 import matplotlib.pyplot as plt
 import numpy as np
 
+import time
+
 ###############################################################################################
 ##### HEADER ####
 ###############################################################################################
@@ -13,7 +15,6 @@ import numpy as np
 #
 # Student 1: Jeroen van Riel
 # Student 2: Koen Moors
-# ...
 
 ######################################
 # AUXILIARY FUNCTIONS
@@ -52,6 +53,30 @@ def keyboard_terminate(model, where):
         pass
     except KeyboardInterrupt:
         model.terminate()
+
+def plot_lines(u, a, b):
+    """Sample points from lines for the first two variables,
+    such that we can completely inspect problems with n=2.
+    Note that this may be also be used for n>2 problems,
+    by visualizing "cross sections" of the space."""
+    step = 0.5
+    xs = np.arange(-10, 10, step)
+    for i in range(len(u)):
+        if u[i].X < 0.5:
+            # skip inactive (u_i == 0) lines
+            continue
+        # plot the first two coordinates
+        ys = [(b[i].X - a[i,0].X * x) / a[i,1].X for x in xs]
+        plt.plot(xs, ys, linestyle=('dotted' if u[i].X < 0.5 else 'solid'))
+        plt.xlim([-10, 10])
+        plt.ylim([-10, 10])
+    plt.show()
+
+def plot_data(X, Y):
+    xs = np.array(X)
+    ys = np.array(Y)
+    plt.scatter(xs[:,0], xs[:,1], marker='x')
+    plt.scatter(ys[:,0], ys[:,1], marker='o')
 
 ######################################
 # EXERCISE 1
@@ -101,55 +126,18 @@ def exercise1(K, X, Y, eps):
     for j in range(len(Y)):
         m.addConstr(gp.quicksum(s[i,j] for i in range(K)) <= gp.quicksum(u[i] for i in range(K)) - 1)
 
-    ### Bound a_i's away from zero vector ###
-    # N.B.: these are not necessary for correctness, but they seem to speed up the
-    # optimization for all the provided instances. Especially for the 'data_cg_cross4.cg'
-    # instance, it reduces computation time from 96.59s to 10.35s.
-    # # sign variables for a_i
-    # p = { (i, n): m.addVar(obj=0, vtype=gp.GRB.BINARY, name=f"p_{i}_{n}") for i in range(K) for n in range(N) }
-    # # sign constraints for a_i
-    # for i in range(K):
-    #     for n in range(N):
-    #         m.addConstr(a[i,n] + p[i,n] * M >= 1)
-    #         m.addConstr(a[i,n] - (1 - p[i,n]) * M <= -1)
-
     m.ModelSense = gp.GRB.MINIMIZE
     m.update()
     m.optimize()
 
     plot_lines(u, a, b)
 
-
-def plot_lines(u, a, b):
-    """Sample points from lines for the first two variables,
-    such that we can completely inspect problems with n=2.
-    Note that this may be also be used for n>2 problems,
-    by visualizing "cross sections" of the space."""
-    step = 0.5
-    xs = np.arange(-10, 10, step)
-    for i in range(len(u)):
-        if u[i].X < 0.5:
-            # skip inactive (u_i == 0) lines
-            continue
-        # plot the first two coordinates
-        ys = [(b[i].X - a[i,0].X * x) / a[i,1].X for x in xs]
-        plt.plot(xs, ys, linestyle=('dotted' if u[i].X < 0.5 else 'solid'))
-        plt.xlim([-10, 10])
-        plt.ylim([-10, 10])
-    plt.show()
-
-
-def plot_data(X, Y):
-    xs = np.array(X)
-    ys = np.array(Y)
-    plt.scatter(xs[:,0], xs[:,1], marker='x')
-    plt.scatter(ys[:,0], ys[:,1], marker='o')
-
 ######################################
 # EXERCISE 3
 ######################################
 
 def singleton_cols(primal, Y):
+    """Take all singletons {y} for all y in Y as columns."""
     cols = np.eye(len(Y), dtype=np.int16).tolist()
     vars = primal.addVars(len(Y), obj=1, vtype='C', name='vars')
     cons = primal.addConstrs((vars[j] >= 1 for j in range(len(Y))), name='c1')
@@ -157,6 +145,7 @@ def singleton_cols(primal, Y):
     return cols, cons
 
 def partition_cols(primal, pricing, Y):
+    """Greedily construct columns by solving the problem from exercise 2."""
     m = pricing.copy()
 
     for j in range(len(Y)):
@@ -202,10 +191,12 @@ def exercise3(X, Y, eps):
     # construct primal problem with feasible basis
     # we could start by including every I_y := \{ y \}, for all y \in Y
     primal = gp.Model()
+    primal.params.OutputFlag = 0  # for readability, output is turned off
     primal.ModelSense = gp.GRB.MINIMIZE
 
     # construct the pricing problem
     pricing = gp.Model()
+    pricing.params.OutputFlag = 0 # for readability, output is turned off
     pricing.ModelSense = gp.GRB.MAXIMIZE
 
     # for every y, we have a variable indicating whether it is in the set
@@ -218,14 +209,6 @@ def exercise3(X, Y, eps):
     b = pricing.addVar(obj=0, name="b")
 
     M = 10 # "large" number
-
-    # bound a away from zero
-    # sign variables for a_i
-    p = { n: pricing.addVar(obj=0, vtype=gp.GRB.BINARY, name=f"p_{n}") for n in range(N) }
-    # sign constraints for a_i
-    for n in range(N):
-        pricing.addConstr(a[n] + p[n] * M >= 1)
-        pricing.addConstr(a[n] - (1 - p[n]) * M <= -1)
 
     # separation constraints
     for x in X:
@@ -259,20 +242,21 @@ def exercise3(X, Y, eps):
             print("optimal solution found!")
             break
 
-        added = 0
         for k in range(pricing.SolCount):
             pricing.Params.SolutionNumber = k
             if pricing.PoolObjVal >= 1:
-                added += 1
                 # column s is incidence vector of y \in Y in pattern I
                 col = [int(s[j].Xn) for j in range(len(Y))]
+                # now add all y that violate the boundary ax<=b
+                for j in range(len(Y)):
+                    if sum(a[n].Xn * Y[j][n] for n in range(N)) >= b.Xn +eps:
+                        col[j] = 1
                 cols.append(col)
                 # add new variable to the primal problem
                 primal.addVar(obj=1, vtype='C', column=gp.Column(col, cons.values()))
-        
-        print(f"-------------- ADDED {added} COLUMNS")
 
     print(f"total number of columns: {len(cols)}")
+    print(f"objective value: {primal.ObjVal}")
     return cols
 
 ##############################
@@ -280,8 +264,18 @@ def exercise3(X, Y, eps):
 ##############################
 
 def exercise4(cols):
-    pass
+    R = len(cols[0])  # len(Y)
+    L = len(cols)
 
+    m = gp.Model()
+    m.ModelSense = gp.GRB.MINIMIZE
+
+    vars = m.addVars(L, obj=1, vtype=gp.GRB.BINARY, name='vars')
+    cons = m.addConstrs((gp.quicksum(cols[i][j]*vars[i] for i in range(L)) >= 1 for j in range(R)))
+
+    m.update()
+    m.optimize()
+    print(f"objective value: {m.ObjVal}")
 
 ##############################
 # MAIN FUNCTION
@@ -307,13 +301,16 @@ def main():
     ###############################################
 
     # add your input to the following functions
-
-    # exercise1(K, X, Y, eps)
-
+    t = time.time()
+    exercise1(K, X, Y, eps)
+    print(f"Time it took to complete exercise 1: {time.time()-t} s", end= '\n \n')
+    t = time.time()
     cols = exercise3(X, Y, eps)
-
-    # exercise4(cols)
-
+    print(f"Time it took to complete exercise 3: {time.time()-t} s", end= '\n \n')
+    t = time.time()
+    exercise4(cols)
+    print(f"Time it took to complete exercise 4: {time.time()-t} s", end= '\n \n')
+    
     ###############################################
     # end of modifiable block
     ###############################################
