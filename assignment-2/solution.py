@@ -1,6 +1,7 @@
 import sys
 import gurobipy as gp
 import pathlib
+import numpy as np
 
 ###############################################################################################
 ##### HEADER ####
@@ -36,8 +37,18 @@ def read_instance(filename):
 
 class Graph:
 
-    def __init__(self, vertices, edges, x):
-        pass
+    def __init__(self, edges, x):
+        self.n = max(max(e) for e in edges)
+        self.m = len(edges)
+        self.V = np.arange(2*self.n)
+        self.E = np.zeros(shape=(2*self.n, 2*self.n))
+        for (e0, e1) in edges:
+            w = 1 - x[e0] - x[e1]
+            self.E[e0,e1+self.n] = w
+            self.E[e0+self.n,e1] = w
+            self.E[e1,e0+self.n] = w
+            self.E[e1+self.n,e0] = w
+
 
 ##############################
 # EXERCISE 5
@@ -52,7 +63,7 @@ def exercise5(edges):
     m.Params.PreCrush = 1
 
     ###########################
-    print(edges)
+    Graph(edges, x=1)
     ###########################
 
 ##############################
