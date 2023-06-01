@@ -27,12 +27,17 @@ def read_instance(filename):
     edges = []
     for line in f:
         splitline = line.split()
-        (u,v) = (splitline[0], splitline[1])
-        edges.append((u,v))
+        (u,v) = (int(splitline[0]), int(splitline[1]))
+        edges.append((u-1,v-1))
 
     f.close()
 
     return edges
+
+class Graph:
+
+    def __init__(self, vertices, edges, x):
+        pass
 
 ##############################
 # EXERCISE 5
@@ -47,7 +52,7 @@ def exercise5(edges):
     m.Params.PreCrush = 1
 
     ###########################
-    # add your solution here
+    print(edges)
     ###########################
 
 ##############################
