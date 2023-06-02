@@ -54,97 +54,6 @@ def edit_path(path, n):
     return [x] + path
 
 
-class MyGraph:
-
-    def __init__(self, edges):
-        self.n = max(max(e) for e in edges) + 1
-        self.m = len(edges)
-        self.edges = edges
-        self.V = np.arange(2*self.n)
-        self.E = np.zeros(shape=(2*self.n, 2*self.n))
-
-    def update_weights(self, x):
-        for i in range(2*self.n):
-            for j in range(2*self.n):
-                self.E[i,j] = np.infty
-        for (e0, e1) in self.edges:
-            w = 1 - x[e0] - x[e1]
-            self.E[e0,e1+self.n] = w
-            self.E[e0+self.n,e1] = w
-            self.E[e1,e0+self.n] = w
-            self.E[e1+self.n,e0] = w
- 
-    def printSolution(self, dist):
-        print("Vertex \t Distance from Source")
-        for node in self.V:
-            print(node, "\t\t", dist[node])
- 
-    # A utility function to find the vertex with
-    # minimum distance value, from the set of vertices
-    # not yet included in shortest path tree
-    def minDistance(self, dist, sptSet):
- 
-        # Initialize minimum distance for next node
-        min = 1e7
- 
-        # Search not nearest vertex not in the
-        # shortest path tree
-        for v in range(self.n*2):
-            if dist[v] < min and sptSet[v] == False:
-                min = dist[v]
-                min_index = v
- 
-        return min_index
- 
-    # Function that implements Dijkstra's single source
-    # shortest path algorithm for a graph represented
-    # using adjacency matrix representation
-    def dijkstra(self, src):
-        
-        dist = [1e7] * self.n * 2
-        dist[src] = 0
-        sptSet = [False] * self.n * 2
- 
-        for cout in range(self.n*2):
- 
-            # Pick the minimum distance vertex from
-            # the set of vertices not yet processed.
-            # u is always equal to src in first iteration
-            try:
-                u = self.minDistance(dist, sptSet)
-            except UnboundLocalError:
-                continue
-            # Put the minimum distance vertex in the
-            # shortest path tree
-            sptSet[u] = True
- 
-            # Update dist value of the adjacent vertices
-            # of the picked vertex only if the current
-            # distance is greater than new distance and
-            # the vertex in not in the shortest path tree
-            for v in range(self.n*2):
-                if (self.E[u][v] > 0 and
-                   sptSet[v] == False and
-                   dist[v] > dist[u] + self.E[u][v]):
-                    dist[v] = dist[u] + self.E[u][v]
-
-        # self.printSolution(dist)
-        return dist
-
-    def parallel_distances(self):
-        dist = np.zeros(self.n)
-        for v in range(self.n):
-            dist[v] = self.dijkstra(v)[v+self.n]
-        return dist
-    
-    def find_cycle(self):
-        p_dist = self.parallel_distances()
-        m_dist = np.where(p_dist == np.min(p_dist))[0]
-        assert len(m_dist) % 2 == 1, "Found cycle is even"
-        return m_dist
-
-
-
 ##############################
 # EXERCISE 5
 ##############################
@@ -168,8 +77,6 @@ def exercise5(edges):
         gp.quicksum(1 * x[i] for i in range(n)),
         sense=gp.GRB.MAXIMIZE
     )
-
-    G = MyGraph(edges)
     
     def callback(model, where):
         if where == gp.GRB.Callback.POLLING:
@@ -221,7 +128,7 @@ def exercise5(edges):
             x_sol = model.cbGetSolution(x)
             # get the solution value; see https://www.gurobi.com/documentation/9.5/refman/cb_codes.html#sec:CallbackCodes
             x_sol_val = model.cbGet(gp.GRB.Callback.MIPSOL_OBJ)
-
+            return 
 
         pass
 
