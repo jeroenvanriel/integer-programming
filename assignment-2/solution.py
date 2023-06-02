@@ -40,8 +40,8 @@ def edit_path(path, n):
     """Given a path, it finds the shortest cycle in it. Moreover, reduces all elements modulo n.
 
     Examples:
-    edit_path([0,1,2,3,0], 10)
-    >>> [0,1,2,3]
+    edit_path([0,11,2,13,4,10], 10)
+    >>> [0,1,2,3,4]
     edit_path([0,1,2,3,1,0], 10)
     >>> [1,2,3]
     edit_path([0,11,2,13,1,10], 10)
@@ -100,8 +100,7 @@ def exercise5(edges):
             G: nx.Graph = nx.Graph()
             for (i,j) in edges:
                 w = 1 - x_frac[i] - x_frac[j]
-                w = min(w , 1)
-                w = max(w, 0)
+                w = max(min(w , 1), 0)   # prevent rounding errors to cause infeasible weights
                 G.add_edge(u_of_edge=i, v_of_edge=j+n, weight=w)
                 G.add_edge(u_of_edge=i+n, v_of_edge=j, weight=w)
 
@@ -113,7 +112,7 @@ def exercise5(edges):
                     min_i = i
 
             path = nx.dijkstra_path(G, source=min_i, target=min_i+n, weight="weight")
-            path = edit_path(path, n)   # first and last element are the same
+            path = edit_path(path, n)
 
             cut = gp.quicksum(x[i] for i in path) <= (len(path) - 1) / 2
             if cut is None:
@@ -128,6 +127,9 @@ def exercise5(edges):
             x_sol = model.cbGetSolution(x)
             # get the solution value; see https://www.gurobi.com/documentation/9.5/refman/cb_codes.html#sec:CallbackCodes
             x_sol_val = model.cbGet(gp.GRB.Callback.MIPSOL_OBJ)
+            print()
+            print(f"# Found new solution with value {x_sol_val:.2f}")
+
             return 
 
         pass
