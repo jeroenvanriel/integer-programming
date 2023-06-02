@@ -48,6 +48,72 @@ class Graph:
             self.E[e0+self.n,e1] = w
             self.E[e1,e0+self.n] = w
             self.E[e1+self.n,e0] = w
+ 
+    def printSolution(self, dist):
+        print("Vertex \t Distance from Source")
+        for node in self.V:
+            print(node, "\t\t", dist[node])
+ 
+    # A utility function to find the vertex with
+    # minimum distance value, from the set of vertices
+    # not yet included in shortest path tree
+    def minDistance(self, dist, sptSet):
+ 
+        # Initialize minimum distance for next node
+        min = 1e7
+ 
+        # Search not nearest vertex not in the
+        # shortest path tree
+        for v in self.V:
+            if dist[v] < min and sptSet[v] == False:
+                min = dist[v]
+                min_index = v
+ 
+        return min_index
+ 
+    # Function that implements Dijkstra's single source
+    # shortest path algorithm for a graph represented
+    # using adjacency matrix representation
+    def dijkstra(self, src):
+ 
+        dist = [1e7] * self.n * 2
+        dist[src] = 0
+        sptSet = [False] * self.n * 2
+ 
+        for cout in self.V:
+ 
+            # Pick the minimum distance vertex from
+            # the set of vertices not yet processed.
+            # u is always equal to src in first iteration
+            u = self.minDistance(dist, sptSet)
+ 
+            # Put the minimum distance vertex in the
+            # shortest path tree
+            sptSet[u] = True
+ 
+            # Update dist value of the adjacent vertices
+            # of the picked vertex only if the current
+            # distance is greater than new distance and
+            # the vertex in not in the shortest path tree
+            for v in self.V:
+                if (self.graph[u][v] > 0 and
+                   sptSet[v] == False and
+                   dist[v] > dist[u] + self.graph[u][v]):
+                    dist[v] = dist[u] + self.graph[u][v]
+
+        self.printSolution(dist)
+        return dist
+
+    def parallel_distances(self):
+        dist = np.zeros(self.n)
+        for v in self.V:
+            dist[v] = self.dijkstra(v)[v+self.n]
+        return dist
+    
+    def find_cycle(self):
+        p_dist = self.parallel_distances()
+        return np.where(p_dist == np.min(p_dist))[0]
+
 
 
 ##############################
