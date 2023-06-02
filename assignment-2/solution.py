@@ -40,6 +40,7 @@ class Graph:
     def __init__(self, edges, x):
         self.n = max(max(e) for e in edges)
         self.m = len(edges)
+        self.edges = edges
         self.V = np.arange(2*self.n)
         self.E = np.zeros(shape=(2*self.n, 2*self.n))
         for (e0, e1) in edges:
@@ -129,7 +130,61 @@ def exercise5(edges):
     m.Params.PreCrush = 1
 
     ###########################
-    Graph(edges, x=1)
+    G = Graph(edges, x=1)
+    x = m.addVars(range(G.n), vtype=gp.GRB.BINARY, name="x")
+    m.addConstrs(
+        x[i] + x[j] <= 1 for (i, j) in G.edges
+        ) 
+
+    m.setObjective(
+        gp.quicksum(1 * x[i] for i in range(G.n)),
+        sense=gp.GRB.MAXIMIZE
+    )
+    
+    
+    def callback(model, where):
+        if where == gp.GRB.Callback.POLLING:
+            # Polling callback: This is called every so-many milliseconds.
+            return
+
+        if where == gp.GRB.Callback.MIPNODE:
+            # MIPNODE callback: A branch-and-bound tree node is solved to optimality
+            # Get status
+            status = model.cbGet(gp.GRB.Callback.MIPNODE_STATUS)
+            if status != gp.GRB.Status.OPTIMAL:
+                return
+
+            # Get (fractional) solution
+            x_frac = model.cbGetNodeRel(x)
+
+            print()
+            print(f"# Solved branch-and-bound tree node to optimality. Search violated cover inequality:")
+
+            # Find a violated cover inequality
+            cut = 1 # TODO
+            if cut is None:
+                print("Search is unsuccessful")
+                return
+            else:
+                print(cut)
+                model.cbCut(cut)
+            return
+
+        if where == gp.GRB.Callback.MIPSOL:
+            x_sol = model.cbGetSolution(x)
+            # get the solution value; see https://www.gurobi.com/documentation/9.5/refman/cb_codes.html#sec:CallbackCodes
+            x_sol_val = model.cbGet(gp.GRB.Callback.MIPSOL_OBJ)
+
+            print()
+            print(f"# Found new solution with value {x_sol_val:.2f}")
+            items = [i for i in range(G.n) if x_sol[i] > .9]
+            for i in range(G.n):
+                if x_sol[i] < .5:
+                    continue
+                # print(f"{i} (value {x_sol[i]:.1f}, weight {weights[i]}, profit {profits[i]})")
+            return
+
+        pass
     ###########################
 
 ##############################
