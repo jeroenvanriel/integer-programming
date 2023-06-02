@@ -43,7 +43,9 @@ class Graph:
         self.edges = edges
         self.V = np.arange(2*self.n)
         self.E = np.zeros(shape=(2*self.n, 2*self.n))
-        for (e0, e1) in edges:
+
+    def update_weights(self, x):
+        for (e0, e1) in self.edges:
             w = 1 - x[e0] - x[e1]
             self.E[e0,e1+self.n] = w
             self.E[e0+self.n,e1] = w
@@ -113,7 +115,9 @@ class Graph:
     
     def find_cycle(self):
         p_dist = self.parallel_distances()
-        return np.where(p_dist == np.min(p_dist))[0]
+        m_dist = np.where(p_dist == np.min(p_dist))[0]
+        assert len(m_dist) % 2 == 1, "Found cycle is even"
+        return m_dist
 
 
 
@@ -161,7 +165,9 @@ def exercise5(edges):
             print(f"# Solved branch-and-bound tree node to optimality. Search violated cover inequality:")
 
             # Find a violated cover inequality
-            cut = 1 # TODO
+            G.update_weights(x_frac)
+            ind = G.find_cycle()
+            cut = gp.quicksum(x[i] for i in ind) <= (len(ind) - 1) / 2
             if cut is None:
                 print("Search is unsuccessful")
                 return
@@ -181,10 +187,12 @@ def exercise5(edges):
             for i in range(G.n):
                 if x_sol[i] < .5:
                     continue
-                # print(f"{i} (value {x_sol[i]:.1f}, weight {weights[i]}, profit {profits[i]})")
+                print(f"{i} (value {x_sol[i]:.1f})")
             return
 
         pass
+
+    m.optimize(callback=callback)
     ###########################
 
 ##############################
