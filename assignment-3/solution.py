@@ -211,8 +211,87 @@ def exercise1(n, m, f, c):
 # EXERCISE 3 #
 ##############
 
-def exercise3():
-    pass
+def exercise3(K, X, Y):
+    n = len(X[0])
+    print(f'K = {K}')
+    print(f'{len(X)} x-points')
+    print(f'{len(Y)} y-points')
+    print(f'dimension of points = {n}')
+
+    eps = 0.0001
+
+    master = gp.Model()
+    master.ModelSense = gp.GRB.MINIMIZE
+
+    # first-stage variables
+    u = master.addMVar(K, vtype='B', obj=1)
+    s = master.addMVar((len(Y), K), vtype='B')
+
+    # every y-point is cut off    
+    master.addConstr(s @ np.ones(K) >= 1)
+
+    # every y-point is only cut off by active inequalities
+    for y in range(len(Y)):
+        for i in range(K):
+            master.addConstr(s[y, i] <= u[i])
+
+    # construct subproblems
+    B = n * max([abs(x[i]) for i in range(n) for x in X])
+    M = B + eps + n * max([abs(y[i]) for i in range(n) for y in Y])
+
+    subproblem = gp.Model()
+    subproblem.ModelSense = gp.GRB.MINIMIZE
+    subproblem.Params.InfUnbdInfo = 1
+    constraints = []
+
+    a = subproblem.addMVar(n, lb=-1, ub=1)
+    b = subproblem.addVar(lb=-B, ub=B)
+
+    for x in X:
+        subproblem.addConstr(a @ np.array(x) <= b)
+    for iy, y in enumerate(Y):
+        constraints.append(
+            subproblem.addConstr(a @ np.array(y) - b >= 0) # RHS is placeholder
+        )
+
+    done = False
+    while not done:
+        master.update()
+        master.optimize()
+
+        # get primal solution
+        s_opt = s.X
+        # print(f'--- SOLUTION: found solution s = {s_opt}')
+
+        # check the subproblems
+        done = True
+        for i in range(K):
+            # update the subproblem
+            for iy in range(len(Y)):
+                constraints[iy].RHS = eps - M * (1 - s_opt[iy][i])
+
+            # solve it
+            subproblem.update()
+            subproblem.optimize()
+
+            # add cut if not feasible
+            if subproblem.status == gp.GRB.INFEASIBLE:
+                done = False
+
+                dual = subproblem.FarkasDual
+                # print('--- DUAL')
+                # print(dual)
+
+                # We only need the dual coefficients corresponding to the last inequalities,
+                # i.e., the ones corresponding to the y-points (hence 'len(X) + iy')
+                # N.B. Because these inequalities are >=, the RHS needs to be negated.
+                master.addConstr(gp.quicksum(
+                    dual[len(X) + iy] * (-eps + M * (1 - s[iy][i])) for iy in range(len(Y))
+                ) <= 0)
+
+                break # to immediately continue solving the master problem once we found a cut
+
+    print(f'--- DONE: solution objective {master.ObjVal}')
 
 #################
 # MAIN FUNCTION #
@@ -244,7 +323,7 @@ def main():
     
     exercise1(nfactories, ncustomers, fixcost, cost)
 
-    exercise3()
+    exercise3(K, X, Y)
 
     ###############################################
     # end of modifiable block
