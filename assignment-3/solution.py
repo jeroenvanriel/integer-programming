@@ -285,15 +285,16 @@ def exercise3(K, X, Y):
                 # We only need the dual coefficients corresponding to the last inequalities,
                 # i.e., the ones corresponding to the y-points (hence 'len(X) + iy')
                 # N.B. Because these inequalities are >=, the RHS needs to be negated.
-                # master.addConstr(gp.quicksum(
-                #     dual[len(X) + iy] * (-eps + M * (1 - s[iy][i])) for iy in range(len(Y))
-                # ) <= 0)
-
                 master.addConstr(gp.quicksum(
-                    1 - s[iy,k] for iy in range(len(Y)) for k in range(K) if s_opt[iy,k] >= 0.5
-                ) >= 1)
+                    dual[len(X) + iy] * (-eps + M * (1 - s[iy][i])) for iy in range(len(Y))
+                ) <= 0)
 
-                break # to immediately continue solving the master problem once we found a cut
+                # (alternatively: 'better no good cut')
+                # master.addConstr(gp.quicksum(
+                #     1 - s[iy,k] for iy in range(len(Y)) for k in range(K) if s_opt[iy,k] >= 0.5
+                # ) >= 1)
+
+                # break # to immediately continue solving the master problem once we found a cut
 
     print(f'--- DONE: solution objective {master.ObjVal}')
 
