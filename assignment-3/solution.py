@@ -289,7 +289,7 @@ def exercise3(K, X, Y):
                     dual[len(X) + iy] * (-eps + M * (1 - s[iy][i])) for iy in range(len(Y))
                 ) <= 0)
 
-                # (alternatively: 'better no good cut')
+                # (alternatively: 'better no good cut') exercise 3 part 4
                 # master.addConstr(gp.quicksum(
                 #     1 - s[iy,k] for iy in range(len(Y)) for k in range(K) if s_opt[iy,k] >= 0.5
                 # ) >= 1)
